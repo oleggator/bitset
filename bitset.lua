@@ -1,50 +1,25 @@
 local ffi = require('ffi')
+local bitset_internal = require('bitset_internal')
 
 local bitset = {}
+bitset.__index = bitset
 
-function bitset:new(size, value)
+function bitset.new(size, value)
     local bitset_cdata = ffi.new('uint8_t[?]', size)
-    if value ~= nil then
-        ffi.fill(bitset_cdata, value)
-    else
-        ffi.fill(bitset_cdata)
-    end
+    ffi.fill(bitset_cdata, size, value)
 
     return setmetatable({
         _cdata = bitset_cdata,
-    }, self)
+        _size = size,
+    }, bitset)
 end
 
-function bitset:band()
-
+function bitset:bor_in_place(other)
+    bitset_internal.bor_in_place(self._cdata, other._cdata, self._size)
 end
 
-function bitset:bor()
-
-end
-
-function bitset:bxor()
-
-end
-
-function bitset:bnot()
-
-end
-
-function bitset:bswap()
-
-end
-
-function bitset:lshift()
-
-end
-
-function bitset:rshift()
-
-end
-
-function bitset:arshift()
-
+function bitset:tostring()
+    return ffi.string(self._cdata, self._size)
 end
 
 return bitset

@@ -17,9 +17,6 @@ external_dependencies = {
     TARANTOOL = {
         header = "tarantool/module.h"
     },
-    MSGPUCK = {
-        header = "msgpuck.h"
-    }
 }
 build = {
     type = 'cmake',
