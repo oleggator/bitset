@@ -1,0 +1,14 @@
+name: Test bitset
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image:  tarantool/tarantool:2.x-centos7
+    steps:
+      - uses: actions/checkout@v1
+      - run: yum install -y git
+      - run: tarantoolctl rocks install luatest
+        working-directory: .
+      - run: .rocks/bin/luatest
+        working-directory: .
