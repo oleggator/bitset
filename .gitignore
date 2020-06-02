@@ -1,3 +1,4 @@
 .idea
 .rocks
 cmake-build-*
+build.luarocks

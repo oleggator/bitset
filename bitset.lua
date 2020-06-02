@@ -1,5 +1,5 @@
 local ffi = require('ffi')
-local bitset_internal = require('bitset_internal')
+local bitset_internal = require('bitset.internal')
 
 local bitset = {}
 bitset.__index = bitset

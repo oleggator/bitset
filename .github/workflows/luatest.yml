@@ -7,8 +7,10 @@ jobs:
       image:  tarantool/tarantool:2.x-centos7
     steps:
       - uses: actions/checkout@v1
-      - run: yum install -y git
+      - run: yum install -y git cmake make gcc
       - run: tarantoolctl rocks install luatest
+        working-directory: .
+      - run: tarantoolctl rocks make
         working-directory: .
       - run: .rocks/bin/luatest
         working-directory: .
