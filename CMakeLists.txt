@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(bitset C)
 
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_C_FLAGS "-undefined dynamic_lookup")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined suppress -flat_namespace")
 endif ()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
