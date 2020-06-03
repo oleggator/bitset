@@ -45,6 +45,29 @@ int lnew_from_string(lua_State *L) {
     return 1;
 }
 
+int lnew_from_tuple(lua_State *L) {
+    box_tuple_t *tuple = luaT_istuple(L, 1);
+    uint64_t field_no = luaL_checkuint64(L, 2);
+
+    box_tuple_ref(tuple);
+
+    const char *src_msgpack = box_tuple_field(tuple, field_no - 1);
+    const char *src_msgpack_cursor = src_msgpack;
+    uint64_t len = mp_decode_binl(&src_msgpack_cursor);
+    uint64_t bin_header_size = src_msgpack_cursor - src_msgpack;
+
+    size_t udata_size = sizeof(bitset_t) + (bin_header_size + len - 1) * sizeof(uint8_t);
+    bitset_t *bitset = lua_newuserdata(L, udata_size);
+
+    bitset->size = len;
+    bitset->bin_header_size = bin_header_size;
+    memcpy(bitset->msgpack, src_msgpack, bin_header_size + len);
+
+    box_tuple_unref(tuple);
+
+    return 1;
+}
+
 void bor(uint8_t *dst, const uint8_t *src, uint64_t len) {
     for (uint64_t i = 0; i < len; ++i) {
         dst[i] |= src[i];

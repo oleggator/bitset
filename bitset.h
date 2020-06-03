@@ -13,6 +13,8 @@ int lnew(lua_State *L);
 
 int lnew_from_string(lua_State *L);
 
+int lnew_from_tuple(lua_State *L);
+
 int lbor_in_place(lua_State *L);
 
 int lbor_tuple_in_place(lua_State *L);
@@ -24,6 +26,7 @@ int lto_string(lua_State *L);
 static const struct luaL_Reg functions[] = {
     {"new",                lnew},
     {"new_from_string",    lnew_from_string},
+    {"new_from_tuple",     lnew_from_tuple},
     {"bor_in_place",       lbor_in_place},
     {"bor_tuple_in_place", lbor_tuple_in_place},
     {"to_tuple",           lto_tuple},
