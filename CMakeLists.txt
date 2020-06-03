@@ -36,7 +36,7 @@ target_link_libraries(bitset_internal msgpuck)
 set_target_properties(bitset_internal PROPERTIES
         PREFIX ""
         SUFFIX ".so"
-        OUTPUT_NAME "internal")
+        OUTPUT_NAME "bitset")
 
 set(LUA_PATH "LUA_PATH=${PROJECT_SOURCE_DIR}/?.lua\\;${PROJECT_SOURCE_DIR}/?/init.lua\\;\\;")
 set(LUA_SOURCE_DIR "LUA_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
@@ -60,5 +60,4 @@ configure_file(
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/VERSION.lua
         DESTINATION ${TARANTOOL_INSTALL_LUADIR}/${PROJECT_NAME}/)
-install(TARGETS bitset_internal LIBRARY DESTINATION ${TARANTOOL_INSTALL_LIBDIR}/bitset)
-install(FILES bitset.lua DESTINATION ${TARANTOOL_INSTALL_LUADIR}/bitset)
+install(TARGETS bitset_internal LIBRARY DESTINATION ${TARANTOOL_INSTALL_LIBDIR})
