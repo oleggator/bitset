@@ -109,28 +109,32 @@ int lbor_tuple_in_place(lua_State *L) {
 }
 
 int lbor_uint_key(lua_State *L) {
-    const uint64_t space_id = luaL_checkuint64(L, 1);
-    const uint64_t index_id = luaL_checkuint64(L, 2);
-    const uint64_t field_no = luaL_checkuint64(L, 3);
-    if (!lua_istable(L, 4)) {
+    const int space_id_index = 1;
+    const int index_id_index = 2;
+    const int field_no_index = 3;
+    const int keys_table_index = 4;
+
+    const uint64_t space_id = luaL_checkuint64(L, space_id_index);
+    const uint64_t index_id = luaL_checkuint64(L, index_id_index);
+    const uint64_t field_no = luaL_checkuint64(L, field_no_index);
+    if (!lua_istable(L, keys_table_index)) {
         fprintf(stderr, "%s\n", "third argument must be array");
         return 0;
     }
 
+    size_t keys_table_len = lua_objlen(L, keys_table_index);
+    if (keys_table_len < 1) {
+        return 0;
+    }
 
-    lua_pushnil(L); // first key
-    lua_next(L, -2);
+    lua_rawgeti(L, keys_table_index, 1);
     uint64_t id = luaL_checkuint64(L, -1);
-    uint64_t next_key = luaL_checkuint64(L, -2);
+    lua_pop(L, 1);
 
     const int key_msgpack_len = 10;  // max uint64 msgpack size + array header
     char key_msgpack[key_msgpack_len];
     char *key_part = mp_encode_array(key_msgpack, 1);
     mp_encode_uint(key_part, id);
-
-    lua_pop(L, 1); // pop value
-    lua_pop(L, 1); // pop key
-
 
     box_tuple_t *tuple;
     int err = box_index_get(space_id, index_id,
@@ -149,10 +153,10 @@ int lbor_uint_key(lua_State *L) {
     bitset_t *bitset = new_from_tuple(L, tuple, field_no); // pushes bitset to lua stack
     box_tuple_unref(tuple);
 
-    luaL_pushuint64(L, next_key); // pushes next key
-
-    while (lua_next(L, -3) != 0) {
+    for (size_t i = 2; i <= keys_table_len; ++i) {
+        lua_rawgeti(L, keys_table_index, i);
         id = luaL_checkuint64(L, -1);
+        lua_pop(L, 1);
         mp_encode_uint(key_part, id);
 
         err = box_index_get(space_id, index_id,
@@ -170,8 +174,6 @@ int lbor_uint_key(lua_State *L) {
         box_tuple_ref(tuple);
         bor_tuple_in_place(bitset, tuple, field_no);
         box_tuple_unref(tuple);
-
-        lua_pop(L, 1);
     }
 
     return 1;
