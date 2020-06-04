@@ -2,3 +2,5 @@
 .rocks
 cmake-build-*
 build.luarocks
+*.xlog
+*.snap
