@@ -108,6 +108,75 @@ int lbor_tuple_in_place(lua_State *L) {
     return 0;
 }
 
+int lbor_uint_key(lua_State *L) {
+    const uint64_t space_id = luaL_checkuint64(L, 1);
+    const uint64_t index_id = luaL_checkuint64(L, 2);
+    const uint64_t field_no = luaL_checkuint64(L, 3);
+    if (!lua_istable(L, 4)) {
+        fprintf(stderr, "%s\n", "third argument must be array");
+        return 0;
+    }
+
+
+    lua_pushnil(L); // first key
+    lua_next(L, -2);
+    uint64_t id = luaL_checkuint64(L, -1);
+    uint64_t next_key = luaL_checkuint64(L, -2);
+
+    const int key_msgpack_len = 10;  // max uint64 msgpack size + array header
+    char key_msgpack[key_msgpack_len];
+    char *key_part = mp_encode_array(key_msgpack, 1);
+    mp_encode_uint(key_part, id);
+
+    lua_pop(L, 1); // pop value
+    lua_pop(L, 1); // pop key
+
+
+    box_tuple_t *tuple;
+    int err = box_index_get(space_id, index_id,
+                            key_msgpack, key_msgpack + key_msgpack_len,
+                            &tuple);
+    if (err != 0) {
+        fprintf(stderr, "%s\n", box_error_message(box_error_last()));
+        return 0;
+    }
+    if (tuple == NULL) {
+        fprintf(stderr, "%s\n", "not found");
+        return 0;
+    }
+
+    box_tuple_ref(tuple);
+    bitset_t *bitset = new_from_tuple(L, tuple, field_no); // pushes bitset to lua stack
+    box_tuple_unref(tuple);
+
+    luaL_pushuint64(L, next_key); // pushes next key
+
+    while (lua_next(L, -3) != 0) {
+        id = luaL_checkuint64(L, -1);
+        mp_encode_uint(key_part, id);
+
+        err = box_index_get(space_id, index_id,
+                            key_msgpack, key_msgpack + key_msgpack_len,
+                            &tuple);
+        if (err != 0) {
+            fprintf(stderr, "%s\n", box_error_message(box_error_last()));
+            return 0;
+        }
+        if (tuple == NULL) {
+            fprintf(stderr, "%s\n", "not found");
+            return 0;
+        }
+
+        box_tuple_ref(tuple);
+        bor_tuple_in_place(bitset, tuple, field_no);
+        box_tuple_unref(tuple);
+
+        lua_pop(L, 1);
+    }
+
+    return 1;
+}
+
 box_tuple_t *to_tuple(const bitset_t *bitset) {
     const uint8_t *tuple_body_begin = bitset->msgpack;
     const uint8_t *tuple_body_end = bitset->msgpack + bitset->bin_header_size + bitset->size;

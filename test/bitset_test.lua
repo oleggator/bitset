@@ -45,3 +45,16 @@ g.test_new_from_tuple = function()
 
     t.assert_equals(bitset.to_string(bs1), bitset.to_string(bs2))
 end
+
+g.test_bor_uint_key = function()
+    local bs1 = bitset.new_from_string('\xFF\x00\x00\x00\xFF\x00\x00\x00')
+    box.space.test_to_tuple:insert { 3, bitset.to_tuple(bs1) }
+
+    local bs2 = bitset.new_from_string('\x00\x00\xFF\x00\x00\x00\xFF\x00')
+    box.space.test_to_tuple:insert { 4, bitset.to_tuple(bs2) }
+
+    local expected = bitset.new_from_string('\xFF\x00\xFF\x00\xFF\x00\xFF\x00')
+
+    local result = bitset.bor_uint_key(box.space.test_to_tuple.id, 0, 2, { 3, 4 })
+    t.assert_equals(bitset.to_string(result), bitset.to_string(expected))
+end
