@@ -25,6 +25,8 @@ int lto_tuple(lua_State *L);
 
 int lto_string(lua_State *L);
 
+static const char libname[] = "bitset";
+
 static const struct luaL_Reg bitset_f[] = {
     {"new",             lnew},
     {"new_from_string", lnew_from_string},
@@ -42,13 +44,13 @@ static const struct luaL_Reg bitset_m[] = {
 };
 
 int luaopen_bitset(lua_State *L) {
-    luaL_newmetatable(L, "bitset");
+    luaL_newmetatable(L, libname);
 
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
 
     luaL_setfuncs(L, bitset_m, 0);
-    luaL_register(L, "bitset", bitset_f);
+    luaL_register(L, libname, bitset_f);
 
     return 1;
 }

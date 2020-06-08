@@ -88,8 +88,8 @@ void bor_in_place(uint8_t *dst, const uint8_t *src, uint64_t len) {
 }
 
 int lbor_in_place(lua_State *L) {
-    bitset_t *dst_bitset = lua_touserdata(L, 1);
-    bitset_t *src_bitset = lua_touserdata(L, 2);
+    bitset_t *dst_bitset = luaL_checkudata(L, 1, libname);
+    bitset_t *src_bitset = luaL_checkudata(L, 2, libname);
 
     bor_in_place(dst_bitset->msgpack + dst_bitset->bin_header_size,
                  src_bitset->msgpack + src_bitset->bin_header_size,
@@ -106,7 +106,7 @@ void bor_tuple_in_place(bitset_t *dst_bitset, box_tuple_t *src_tuple, uint64_t f
 }
 
 int lbor_tuple_in_place(lua_State *L) {
-    bitset_t *bitset = lua_touserdata(L, 1);
+    bitset_t *bitset = luaL_checkudata(L, 1, libname);
     box_tuple_t *tuple = luaT_istuple(L, 2);
     uint64_t field_no = luaL_checkuint64(L, 3);
 
@@ -197,14 +197,14 @@ box_tuple_t *to_tuple(const bitset_t *bitset) {
 }
 
 int lto_tuple(lua_State *L) {
-    bitset_t *bitset = lua_touserdata(L, 1);
+    bitset_t *bitset = luaL_checkudata(L, 1, libname);
     box_tuple_t *tuple = to_tuple(bitset);
     luaT_pushtuple(L, tuple);
     return 1;
 }
 
 int lto_string(lua_State *L) {
-    bitset_t *bitset = lua_touserdata(L, 1);
+    bitset_t *bitset = luaL_checkudata(L, 1, libname);
     lua_pushlstring(L, (const char *) bitset->msgpack + bitset->bin_header_size, bitset->size);
     return 1;
 }
