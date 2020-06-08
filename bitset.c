@@ -25,6 +25,9 @@ int lnew(lua_State *L) {
     char *bitset_body = mp_encode_binl((char *) bitset->msgpack, len);
     memset(bitset_body, 0, len * sizeof(uint8_t));
 
+    luaL_getmetatable(L, "bitset");
+    lua_setmetatable(L, -2);
+
     return 1;
 }
 
@@ -42,6 +45,9 @@ int lnew_from_string(lua_State *L) {
     char *bitset_body = mp_encode_binl((char *) bitset->msgpack, len);
     memcpy(bitset_body, str, len);
 
+    luaL_getmetatable(L, "bitset");
+    lua_setmetatable(L, -2);
+
     return 1;
 }
 
@@ -57,6 +63,9 @@ bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
     bitset->size = len;
     bitset->bin_header_size = bin_header_size;
     memcpy(bitset->msgpack, src_msgpack, bin_header_size + len);
+
+    luaL_getmetatable(L, "bitset");
+    lua_setmetatable(L, -2);
 
     return bitset;
 }

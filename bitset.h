@@ -25,20 +25,31 @@ int lto_tuple(lua_State *L);
 
 int lto_string(lua_State *L);
 
-static const struct luaL_Reg functions[] = {
-    {"new",                lnew},
-    {"new_from_string",    lnew_from_string},
-    {"new_from_tuple",     lnew_from_tuple},
+static const struct luaL_Reg bitset_f[] = {
+    {"new",             lnew},
+    {"new_from_string", lnew_from_string},
+    {"new_from_tuple",  lnew_from_tuple},
+    {"bor_uint_key",    lbor_uint_key},
+    {NULL, NULL},
+};
+
+static const struct luaL_Reg bitset_m[] = {
     {"bor_in_place",       lbor_in_place},
     {"bor_tuple_in_place", lbor_tuple_in_place},
-    {"bor_uint_key",      lbor_uint_key},
     {"to_tuple",           lto_tuple},
     {"to_string",          lto_string},
     {NULL, NULL},
 };
 
 int luaopen_bitset(lua_State *L) {
-    luaL_register(L, "bitset", functions);
+    luaL_newmetatable(L, "bitset");
+
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "__index");
+
+    luaL_setfuncs(L, bitset_m, 0);
+    luaL_register(L, "bitset", bitset_f);
+
     return 1;
 }
 
