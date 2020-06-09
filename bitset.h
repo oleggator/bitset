@@ -40,6 +40,7 @@ static const struct luaL_Reg bitset_m[] = {
     {"bor_tuple_in_place", lbor_tuple_in_place},
     {"to_tuple",           lto_tuple},
     {"to_string",          lto_string},
+    {"__tostring",         lto_string},
     {NULL, NULL},
 };
 
