@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
-project(bitset C)
+project(bitset CXX)
 
-if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined suppress -flat_namespace")
 endif ()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -O3 -mavx -ftree-vectorize")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -mavx -ftree-vectorize")
 
 include_directories(/usr/local/include)
 link_directories(/usr/local/lib)
@@ -30,10 +30,10 @@ if (NOT EXISTS "${PROJECT_SOURCE_DIR}/msgpuck/CMakeLists.txt")
 endif ()
 add_subdirectory(msgpuck)
 
-add_library(bitset_internal SHARED bitset.c bitset.h)
-target_link_libraries(bitset_internal msgpuck)
+add_library(bitset SHARED bitset.cpp bitset.h ops.cpp ops.h)
+target_link_libraries(bitset msgpuck)
 
-set_target_properties(bitset_internal PROPERTIES
+set_target_properties(bitset PROPERTIES
         PREFIX ""
         SUFFIX ".so"
         OUTPUT_NAME "bitset")
@@ -60,4 +60,4 @@ configure_file(
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/VERSION.lua
         DESTINATION ${TARANTOOL_INSTALL_LUADIR}/${PROJECT_NAME}/)
-install(TARGETS bitset_internal LIBRARY DESTINATION ${TARANTOOL_INSTALL_LIBDIR})
+install(TARGETS bitset LIBRARY DESTINATION ${TARANTOOL_INSTALL_LIBDIR})

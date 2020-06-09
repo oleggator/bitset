@@ -1,7 +1,12 @@
-#include "bitset.h"
 #include <tarantool/module.h>
+#include <cinttypes>
 #include "msgpuck/msgpuck.h"
-#include <inttypes.h>
+
+#include "bitset.h"
+
+inline bitset_t *check_bitset(lua_State *L, int idx) {
+    return static_cast<bitset_t *>(luaL_checkudata(L, idx, libname));
+}
 
 size_t get_header_len(uint64_t len) {
     if (len <= UINT8_MAX) {
@@ -18,7 +23,7 @@ int lnew(lua_State *L) {
 
     size_t bin_header_size = get_header_len(len);
     size_t udata_size = sizeof(bitset_t) + (bin_header_size + len - 1) * sizeof(uint8_t);
-    bitset_t *bitset = lua_newuserdata(L, udata_size);
+    bitset_t *bitset = (bitset_t *) lua_newuserdata(L, udata_size);
 
     bitset->size = len;
     bitset->bin_header_size = bin_header_size;
@@ -38,7 +43,7 @@ int lnew_from_string(lua_State *L) {
 
     size_t bin_header_size = get_header_len(len);
     size_t udata_size = sizeof(bitset_t) + (bin_header_size + len - 1) * sizeof(uint8_t);
-    bitset_t *bitset = lua_newuserdata(L, udata_size);
+    bitset_t *bitset = (bitset_t *) lua_newuserdata(L, udata_size);
 
     bitset->size = len;
     bitset->bin_header_size = bin_header_size;
@@ -54,8 +59,8 @@ int lnew_from_string(lua_State *L) {
 
 bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
     const char *src_msgpack = box_tuple_field(tuple, field_no - 1);
-    if (src_msgpack == NULL) {
-        return NULL;
+    if (src_msgpack == nullptr) {
+        return nullptr;
     }
     const char *src_msgpack_cursor = src_msgpack;
     // TODO handle wrong type
@@ -63,7 +68,7 @@ bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
     uint64_t bin_header_size = src_msgpack_cursor - src_msgpack;
 
     size_t udata_size = sizeof(bitset_t) + (bin_header_size + len - 1) * sizeof(uint8_t);
-    bitset_t *bitset = lua_newuserdata(L, udata_size);
+    bitset_t *bitset = (bitset_t *) lua_newuserdata(L, udata_size);
 
     bitset->size = len;
     bitset->bin_header_size = bin_header_size;
@@ -77,7 +82,7 @@ bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
 
 int lnew_from_tuple(lua_State *L) {
     box_tuple_t *tuple = luaT_istuple(L, 1);
-    if (tuple == NULL) {
+    if (tuple == nullptr) {
         return luaL_error(L, "Usage bitset.new_from_tuple(tuple, field_no)");
     }
     uint64_t field_no = luaL_checkuint64(L, 2);
@@ -89,43 +94,40 @@ int lnew_from_tuple(lua_State *L) {
     return 1;
 }
 
-void bor_in_place(uint8_t *dst, const uint8_t *src, uint64_t len) {
-    for (uint64_t i = 0; i < len; ++i) {
-        dst[i] |= src[i];
-    }
-}
+template<Op op>
+int lbitwise_in_place(lua_State *L) {
+    bitset_t *dst_bitset = check_bitset(L, 1);
+    bitset_t *src_bitset = check_bitset(L, 2);
 
-int lbor_in_place(lua_State *L) {
-    bitset_t *dst_bitset = luaL_checkudata(L, 1, libname);
-    bitset_t *src_bitset = luaL_checkudata(L, 2, libname);
-
-    bor_in_place(dst_bitset->msgpack + dst_bitset->bin_header_size,
-                 src_bitset->msgpack + src_bitset->bin_header_size,
-                 src_bitset->size);
+    op(dst_bitset->msgpack + dst_bitset->bin_header_size,
+       src_bitset->msgpack + src_bitset->bin_header_size,
+       src_bitset->size);
 
     return 0;
 }
 
-int bor_tuple_in_place(bitset_t *dst_bitset, box_tuple_t *src_tuple, uint64_t field_no) {
-    const uint8_t *src = (const uint8_t *) box_tuple_field(src_tuple, field_no - 1);
-    if (src == NULL) {
+template<Op op>
+int bitwise_tuple_in_place(bitset_t *dst_bitset, box_tuple_t *src_tuple, uint64_t field_no) {
+    const auto *src = (const uint8_t *) box_tuple_field(src_tuple, field_no - 1);
+    if (src == nullptr) {
         return 1;
     }
 
     // TODO handle wrong type
     mp_decode_binl((const char **) &src); // decode binary length
 
-    bor_in_place(dst_bitset->msgpack + dst_bitset->bin_header_size, src, dst_bitset->size);
+    op(dst_bitset->msgpack + dst_bitset->bin_header_size, src, dst_bitset->size);
     return 0;
 }
 
-int lbor_tuple_in_place(lua_State *L) {
-    bitset_t *bitset = luaL_checkudata(L, 1, libname);
+template<Op op>
+int lbitwise_tuple_in_place(lua_State *L) {
+    bitset_t *bitset = check_bitset(L, 1);
     box_tuple_t *tuple = luaT_istuple(L, 2);
     uint64_t field_no = luaL_checkuint64(L, 3);
 
     box_tuple_ref(tuple);
-    int err = bor_tuple_in_place(bitset, tuple, field_no);
+    int err = bitwise_tuple_in_place<op>(bitset, tuple, field_no);
     box_tuple_unref(tuple);
 
     if (err != 0) {
@@ -135,7 +137,8 @@ int lbor_tuple_in_place(lua_State *L) {
     return 0;
 }
 
-int lbor_uint_keys(lua_State *L) {
+template<Op op>
+int lbitwise_uint_keys(lua_State *L) {
     const int space_id_index = 1;
     const int index_id_index = 2;
     const int field_no_index = 3;
@@ -171,8 +174,8 @@ int lbor_uint_keys(lua_State *L) {
     if (err != 0) {
         return luaT_error(L);
     }
-    if (tuple == NULL) {
-        return luaL_error(L, "Tuple with key %"PRIu64" not found", id);
+    if (tuple == nullptr) {
+        return luaL_error(L, "Tuple with key %" PRIu64 " not found", id);
     }
 
     box_tuple_ref(tuple);
@@ -191,12 +194,12 @@ int lbor_uint_keys(lua_State *L) {
         if (err != 0) {
             return luaT_error(L);
         }
-        if (tuple == NULL) {
-            return luaL_error(L, "Tuple with key %"PRId64" not found", id);
+        if (tuple == nullptr) {
+            return luaL_error(L, "Tuple with key %" PRId64 " not found", id);
         }
 
         box_tuple_ref(tuple);
-        bor_tuple_in_place(bitset, tuple, field_no);
+        bitwise_tuple_in_place<op>(bitset, tuple, field_no);
         box_tuple_unref(tuple);
     }
 
@@ -212,14 +215,14 @@ box_tuple_t *to_tuple(const bitset_t *bitset) {
 }
 
 int lto_tuple(lua_State *L) {
-    bitset_t *bitset = luaL_checkudata(L, 1, libname);
+    bitset_t *bitset = check_bitset(L, 1);
     box_tuple_t *tuple = to_tuple(bitset);
     luaT_pushtuple(L, tuple);
     return 1;
 }
 
 int lto_string(lua_State *L) {
-    bitset_t *bitset = luaL_checkudata(L, 1, libname);
+    bitset_t *bitset = check_bitset(L, 1);
     lua_pushlstring(L, (const char *) bitset->msgpack + bitset->bin_header_size, bitset->size);
     return 1;
 }
