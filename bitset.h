@@ -19,7 +19,7 @@ int lbor_in_place(lua_State *L);
 
 int lbor_tuple_in_place(lua_State *L);
 
-int lbor_uint_key(lua_State *L);
+int lbor_uint_keys(lua_State *L);
 
 int lto_tuple(lua_State *L);
 
@@ -31,7 +31,7 @@ static const struct luaL_Reg bitset_f[] = {
     {"new",             lnew},
     {"new_from_string", lnew_from_string},
     {"new_from_tuple",  lnew_from_tuple},
-    {"bor_uint_key",    lbor_uint_key},
+    {"bor_uint_keys",    lbor_uint_keys},
     {NULL, NULL},
 };
 

@@ -1,6 +1,7 @@
 #include "bitset.h"
 #include <tarantool/module.h>
 #include "msgpuck/msgpuck.h"
+#include <inttypes.h>
 
 size_t get_header_len(uint64_t len) {
     if (len <= UINT8_MAX) {
@@ -25,7 +26,7 @@ int lnew(lua_State *L) {
     char *bitset_body = mp_encode_binl((char *) bitset->msgpack, len);
     memset(bitset_body, 0, len * sizeof(uint8_t));
 
-    luaL_getmetatable(L, "bitset");
+    luaL_getmetatable(L, libname);
     lua_setmetatable(L, -2);
 
     return 1;
@@ -45,7 +46,7 @@ int lnew_from_string(lua_State *L) {
     char *bitset_body = mp_encode_binl((char *) bitset->msgpack, len);
     memcpy(bitset_body, str, len);
 
-    luaL_getmetatable(L, "bitset");
+    luaL_getmetatable(L, libname);
     lua_setmetatable(L, -2);
 
     return 1;
@@ -53,7 +54,11 @@ int lnew_from_string(lua_State *L) {
 
 bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
     const char *src_msgpack = box_tuple_field(tuple, field_no - 1);
+    if (src_msgpack == NULL) {
+        return NULL;
+    }
     const char *src_msgpack_cursor = src_msgpack;
+    // TODO handle wrong type
     uint64_t len = mp_decode_binl(&src_msgpack_cursor);
     uint64_t bin_header_size = src_msgpack_cursor - src_msgpack;
 
@@ -64,7 +69,7 @@ bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
     bitset->bin_header_size = bin_header_size;
     memcpy(bitset->msgpack, src_msgpack, bin_header_size + len);
 
-    luaL_getmetatable(L, "bitset");
+    luaL_getmetatable(L, libname);
     lua_setmetatable(L, -2);
 
     return bitset;
@@ -72,6 +77,9 @@ bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
 
 int lnew_from_tuple(lua_State *L) {
     box_tuple_t *tuple = luaT_istuple(L, 1);
+    if (tuple == NULL) {
+        return luaL_error(L, "Usage bitset.new_from_tuple(tuple, field_no)");
+    }
     uint64_t field_no = luaL_checkuint64(L, 2);
 
     box_tuple_ref(tuple);
@@ -98,11 +106,17 @@ int lbor_in_place(lua_State *L) {
     return 0;
 }
 
-void bor_tuple_in_place(bitset_t *dst_bitset, box_tuple_t *src_tuple, uint64_t field_no) {
+int bor_tuple_in_place(bitset_t *dst_bitset, box_tuple_t *src_tuple, uint64_t field_no) {
     const uint8_t *src = (const uint8_t *) box_tuple_field(src_tuple, field_no - 1);
+    if (src == NULL) {
+        return 1;
+    }
+
+    // TODO handle wrong type
     mp_decode_binl((const char **) &src); // decode binary length
 
     bor_in_place(dst_bitset->msgpack + dst_bitset->bin_header_size, src, dst_bitset->size);
+    return 0;
 }
 
 int lbor_tuple_in_place(lua_State *L) {
@@ -111,13 +125,17 @@ int lbor_tuple_in_place(lua_State *L) {
     uint64_t field_no = luaL_checkuint64(L, 3);
 
     box_tuple_ref(tuple);
-    bor_tuple_in_place(bitset, tuple, field_no);
+    int err = bor_tuple_in_place(bitset, tuple, field_no);
     box_tuple_unref(tuple);
+
+    if (err != 0) {
+        return luaL_error(L, "Wrong field index");
+    }
 
     return 0;
 }
 
-int lbor_uint_key(lua_State *L) {
+int lbor_uint_keys(lua_State *L) {
     const int space_id_index = 1;
     const int index_id_index = 2;
     const int field_no_index = 3;
@@ -127,13 +145,14 @@ int lbor_uint_key(lua_State *L) {
     const uint64_t index_id = luaL_checkuint64(L, index_id_index);
     const uint64_t field_no = luaL_checkuint64(L, field_no_index);
     if (!lua_istable(L, keys_table_index)) {
-        fprintf(stderr, "%s\n", "third argument must be array");
-        return 0;
+        return luaL_error(L,
+                          "Usage bitset.bor_uint_keys(space_id, index_id, field_no, keys_table)");
     }
 
     size_t keys_table_len = lua_objlen(L, keys_table_index);
     if (keys_table_len < 1) {
-        return 0;
+        return luaL_error(L,
+                          "Usage bitset.bor_uint_keys(space_id, index_id, field_no, keys_table)");
     }
 
     lua_rawgeti(L, keys_table_index, 1);
@@ -150,12 +169,10 @@ int lbor_uint_key(lua_State *L) {
                             key_msgpack, key_msgpack + key_msgpack_len,
                             &tuple);
     if (err != 0) {
-        fprintf(stderr, "%s\n", box_error_message(box_error_last()));
-        return 0;
+        return luaT_error(L);
     }
     if (tuple == NULL) {
-        fprintf(stderr, "%s\n", "not found");
-        return 0;
+        return luaL_error(L, "Tuple with key %"PRIu64" not found", id);
     }
 
     box_tuple_ref(tuple);
@@ -172,12 +189,10 @@ int lbor_uint_key(lua_State *L) {
                             key_msgpack, key_msgpack + key_msgpack_len,
                             &tuple);
         if (err != 0) {
-            fprintf(stderr, "%s\n", box_error_message(box_error_last()));
-            return 0;
+            return luaT_error(L);
         }
         if (tuple == NULL) {
-            fprintf(stderr, "%s\n", "not found");
-            return 0;
+            return luaL_error(L, "Tuple with key %"PRId64" not found", id);
         }
 
         box_tuple_ref(tuple);
