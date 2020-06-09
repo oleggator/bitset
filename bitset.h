@@ -3,10 +3,12 @@
 
 #include "ops.h"
 
+
 extern "C" {
 #include <tarantool/lauxlib.h>
 int luaopen_bitset(lua_State *L);
 }
+
 
 typedef struct {
     uint64_t size;
@@ -39,6 +41,25 @@ int lto_tuple(lua_State *L);
 int lto_string(lua_State *L);
 
 
+int lget_bit(lua_State *L);
+
+int lset_bit(lua_State *L);
+
+
+int lall(lua_State *L);
+
+int lany(lua_State *L);
+
+int lnone(lua_State *L);
+
+int lcount(lua_State *L);
+
+
+int lset(lua_State *L);
+
+int lreset(lua_State *L);
+
+
 static const char libname[] = "bitset";
 
 static const struct luaL_Reg bitset_f[] = {
@@ -66,19 +87,18 @@ static const struct luaL_Reg bitset_m[] = {
     {"to_string",           lto_string},
     {"__tostring",          lto_string},
 
+    {"get_bit",             lget_bit},
+    {"set_bit",             lset_bit},
+
+    {"all",                 lall},
+    {"any",                 lany},
+    {"none",                lnone},
+    {"count",               lcount},
+
+    {"set",                 lset},
+    {"reset",               lreset},
+
     {nullptr,               nullptr},
 };
-
-int luaopen_bitset(lua_State *L) {
-    luaL_newmetatable(L, libname);
-
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-
-    luaL_setfuncs(L, bitset_m, 0);
-    luaL_register(L, libname, bitset_f);
-
-    return 1;
-}
 
 #endif //BITSET_BITSET_H

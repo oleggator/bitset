@@ -100,3 +100,46 @@ g.test_bxor_uint_keys = function()
     local result = bitset.bxor_uint_keys(box.space.test_to_tuple.id, 0, 2, { 7, 8 })
     t.assert_equals(result:to_string(), expected)
 end
+
+g.test_count = function()
+    local bs = bitset.new_from_string('\xFF\x00\xFF\x00\xFF\x00\x00\x00')
+    t.assert_equals(bs:count(), 24)
+end
+
+g.test_all = function()
+    t.assert_equals(bitset.new_from_string('\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'):all(), true)
+    t.assert_equals(bitset.new_from_string('\xFF\x00\xFF\x00\xFF\x00\x00\x00'):all(), false)
+end
+
+g.test_none = function()
+    t.assert_equals(bitset.new_from_string('\x00\x00\x00\x00\x00\x00\x00\x00'):none(), true)
+    t.assert_equals(bitset.new_from_string('\xFF\x00\xFF\x00\xFF\x00\x00\x00'):none(), false)
+end
+
+g.test_any = function()
+    t.assert_equals(bitset.new_from_string('\x00\x00\x00\x00\x00\x00\x00\x00'):any(), false)
+    t.assert_equals(bitset.new_from_string('\xFF\x00\xFF\x00\xFF\x00\x00\x00'):any(), true)
+end
+
+g.test_set = function()
+    local bs = bitset.new_from_string('\xFF\x00\xFF\x00\xFF\x00\x00\x00')
+    bs:set()
+    t.assert_equals(bs:to_string(), '\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF')
+end
+
+g.test_reset = function()
+    local bs = bitset.new_from_string('\xFF\x00\xFF\x00\xFF\x00\x00\x00')
+    bs:reset()
+    t.assert_equals(bs:to_string(), '\x00\x00\x00\x00\x00\x00\x00\x00')
+end
+
+g.test_get_set_bit = function()
+    local bs = bitset.new_from_string('\x00\x00\x00\x00\xFF\xFF\xFF\xFF')
+    t.assert_equals(bs:get_bit(1), false)
+    t.assert_equals(bs:get_bit(64), true)
+
+    bs:set_bit(1, true)
+    bs:set_bit(64, false)
+    t.assert_equals(bs:get_bit(1), true)
+    t.assert_equals(bs:get_bit(64), false)
+end
