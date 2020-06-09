@@ -1,4 +1,5 @@
 # BitSet for Tarantool
+![Test bitset](https://github.com/oleggator/bitset/workflows/Test%20bitset/badge.svg)
 
 ## Requirements
 - git
