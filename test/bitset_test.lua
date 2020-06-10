@@ -143,3 +143,24 @@ g.test_get_set_bit = function()
     t.assert_equals(bs:get_bit(1), true)
     t.assert_equals(bs:get_bit(64), false)
 end
+
+g.test_set_bit_in_tuple_uint_key = function()
+    local id = 9
+    local field_no = 2
+    local index_id = 0
+
+    local bs = bitset.new_from_string('\x00\x00\x00\x00\xFF\xFF\xFF\xFF')
+    box.space.test_to_tuple:insert { id, bs:to_tuple() }
+
+    local tuple = box.space.test_to_tuple:get(id)
+    t.assert_equals(bitset.new_from_tuple(tuple, field_no):get_bit(1), false)
+    t.assert_equals(bitset.new_from_tuple(tuple, field_no):get_bit(64), true)
+
+    bitset.set_bit_in_tuple_uint_key(box.space.test_to_tuple.id, index_id, id, field_no, 1, true)
+    tuple = box.space.test_to_tuple:get(id)
+    t.assert_equals(bitset.new_from_tuple(tuple, field_no):get_bit(1), true)
+
+    bitset.set_bit_in_tuple_uint_key(box.space.test_to_tuple.id, index_id, id, field_no, 64, false)
+    tuple = box.space.test_to_tuple:get(id)
+    t.assert_equals(bitset.new_from_tuple(tuple, field_no):get_bit(64), false)
+end

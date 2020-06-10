@@ -26,6 +26,9 @@ Bitwise AND tuple fields by uint key
 ### `bitset.bxor_uint_keys(space_id, index_id, keys)`
 Bitwise XOR tuple fields by uint key
 
+### `bitset.set_bit_in_tuple_uint_key(space_id, index_id, key, field_no, bit_index)`
+Sets bit in tuple field
+
 ### `bitset:bor_in_place(bitset)`
 In-place bitwise OR bitset with another
 

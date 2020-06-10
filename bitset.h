@@ -60,18 +60,23 @@ int lset(lua_State *L);
 int lreset(lua_State *L);
 
 
+int lset_bit_in_tuple_uint_key(lua_State *L);
+
+
 static const char libname[] = "bitset";
 
 static const struct luaL_Reg bitset_f[] = {
-    {"new",             lnew},
-    {"new_from_string", lnew_from_string},
-    {"new_from_tuple",  lnew_from_tuple},
+    {"new",                       lnew},
+    {"new_from_string",           lnew_from_string},
+    {"new_from_tuple",            lnew_from_tuple},
 
-    {"bor_uint_keys",   lbitwise_uint_keys<bit_or>},
-    {"band_uint_keys",  lbitwise_uint_keys<bit_and>},
-    {"bxor_uint_keys",  lbitwise_uint_keys<bit_xor>},
+    {"bor_uint_keys",             lbitwise_uint_keys<bit_or>},
+    {"band_uint_keys",            lbitwise_uint_keys<bit_and>},
+    {"bxor_uint_keys",            lbitwise_uint_keys<bit_xor>},
 
-    {nullptr,           nullptr},
+    {"set_bit_in_tuple_uint_key", lset_bit_in_tuple_uint_key},
+
+    {nullptr,                     nullptr},
 };
 
 static const struct luaL_Reg bitset_m[] = {

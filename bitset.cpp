@@ -1,5 +1,6 @@
 #include <tarantool/module.h>
 #include <cinttypes>
+#include <cstring>
 #include "msgpuck/msgpuck.h"
 
 #include "bitset.h"
@@ -251,10 +252,9 @@ int lto_string(lua_State *L) {
 }
 
 
-void set_bit(bitset_t *bitset, uint64_t index, bool value) {
-    uint8_t *bitset_raw = bitset->msgpack + bitset->bin_header_size;
-    uint64_t byte_index = (index - 1) / 8;
-    uint8_t bit_index = (index - 1) % 8;
+void set_bit(uint8_t *bitset_raw, uint64_t index, bool value) {
+    const uint64_t byte_index = index / 8;
+    const uint8_t bit_index = index % 8;
     if (value) {
         bitset_raw[byte_index] |= 0x01 << bit_index;
     } else {
@@ -274,20 +274,18 @@ int lset_bit(lua_State *L) {
         return luaL_error(L, "Index must be greater than 0"
                              " and less than or equal to the size of the array");
     }
-    set_bit(bitset, index, value);
+    uint8_t *bitset_raw = bitset->msgpack + bitset->bin_header_size;
+    set_bit(bitset_raw, index - 1, value);
 
     lua_pushboolean(L, value);
     return 1;
 }
 
 
-bool get_bit(const bitset_t *bitset, uint64_t index) {
-    const uint8_t *bitset_raw = bitset->msgpack + bitset->bin_header_size;
-    uint64_t byte_index = index / 8;
-    uint8_t bit_index = index % 8;
-    bool bit = (bitset_raw[byte_index] >> bit_index) & 0x01;
-
-    return bit;
+bool get_bit(const uint8_t *bitset_raw, uint64_t index) {
+    const uint64_t byte_index = index / 8;
+    const uint8_t bit_index = index % 8;
+    return (bitset_raw[byte_index] >> bit_index) & 0x01;
 }
 
 int lget_bit(lua_State *L) {
@@ -298,7 +296,10 @@ int lget_bit(lua_State *L) {
                              " and less than or equal to the size of the array");
     }
 
-    lua_pushboolean(L, get_bit(bitset, index - 1));
+    const uint8_t *bitset_raw = bitset->msgpack + bitset->bin_header_size;
+    bool bit = get_bit(bitset_raw, index - 1);
+
+    lua_pushboolean(L, bit);
     return 1;
 }
 
@@ -389,4 +390,83 @@ int lcount(lua_State *L) {
     bitset_t *bitset = check_bitset(L, 1);
     luaL_pushuint64(L, count(bitset->msgpack + bitset->bin_header_size, bitset->size));
     return 1;
+}
+
+int lset_bit_in_tuple_uint_key(lua_State *L) {
+    const uint64_t space_id = luaL_checkuint64(L, 1);
+    const uint64_t index_id = luaL_checkuint64(L, 2);
+    const uint64_t key = luaL_checkuint64(L, 3);
+    const uint64_t field_no = luaL_checkuint64(L, 4);
+    const uint64_t bit_index = luaL_checkuint64(L, 5);
+    if (!lua_isboolean(L, 6)) {
+        return luaL_error(L, "Usage: bitset.set_bit_in_tuple_uint_key"
+                             "(space_id, index_id, key, field_no, bit_index, value)");
+    }
+    bool value = lua_toboolean(L, 6);
+
+    const int key_msgpack_len = 10;  // max uint64 msgpack size + array header
+    char key_msgpack[key_msgpack_len];
+    char *key_part = mp_encode_array(key_msgpack, 1);
+    mp_encode_uint(key_part, key);
+
+    box_txn_begin();
+    box_tuple_t *tuple;
+    int err = box_index_get(space_id, index_id,
+                            key_msgpack, key_msgpack + key_msgpack_len,
+                            &tuple);
+    if (err != 0) {
+        box_txn_rollback();
+        return luaT_error(L);
+    }
+    if (tuple == nullptr) {
+        box_txn_rollback();
+        return luaL_error(L, "Tuple with key %u not found", key);
+    }
+
+    box_tuple_ref(tuple);
+
+    const char *bitset_msgpack = box_tuple_field(tuple, field_no - 1);
+    if (bitset_msgpack == nullptr) {
+        box_txn_rollback();
+        return luaL_error(L, "Invalid field index");
+    }
+
+    const char *bitset_msgpack_end = bitset_msgpack;
+    uint32_t bitset_len;
+    const char *bitset_raw = mp_decode_bin(&bitset_msgpack_end, &bitset_len);
+    uint32_t bin_header_len = bitset_raw - bitset_msgpack;
+    uint32_t bitset_msgpack_len = bitset_msgpack_end - bitset_msgpack;
+
+    uint32_t ops_len =
+        1 // ops array header
+        + 1 // op array header
+        + 2 // op string with header
+        + 9 // field_no with header (max possible)
+        + bitset_msgpack_len; // bitset with header
+
+
+    uint8_t *ops = (uint8_t *) box_txn_alloc(ops_len);
+    uint8_t *ops_end = ops;
+    ops_end = (uint8_t *) mp_encode_array((char *) ops_end, 1); // ops array header
+    ops_end = (uint8_t *) mp_encode_array((char *) ops_end, 3); // op array header
+    ops_end = (uint8_t *) mp_encode_str((char *) ops_end, "=", 1); // op string with header
+    ops_end = (uint8_t *) mp_encode_uint((char *) ops_end, field_no - 1); // field_no with header
+    std::memcpy(ops_end, bitset_msgpack, bitset_msgpack_len); // bitset with header
+
+    box_tuple_unref(tuple);
+
+    set_bit(ops_end + bin_header_len, bit_index - 1, value);
+    ops_end += bitset_msgpack_len;
+
+    err = box_update(space_id, index_id,
+                     key_msgpack, key_msgpack + key_msgpack_len,
+                     (const char *) ops, (const char *) ops_end,
+                     0, &tuple);
+    if (err != 0) {
+        box_txn_rollback();
+        return luaT_error(L);
+    }
+
+    box_txn_commit();
+    return 0;
 }
