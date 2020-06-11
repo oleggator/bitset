@@ -17,17 +17,26 @@ Creates bitset from string
 ### `bitset.new_from_tuple(tuple, field_no)`
 Creates bitset from tuple binary field
 
-### `bitset.bor_uint_keys(space_id, index_id, keys)`
-Bitwise OR tuple fields by uint key
+### `bitset.bor_uint_keys(space_id, index_id, field_no, keys)`
+Bitwise OR tuples by uint keys
 
-### `bitset.band_uint_keys(space_id, index_id, keys)`
-Bitwise AND tuple fields by uint key
+### `bitset.band_uint_keys(space_id, index_id, field_no, keys)`
+Bitwise AND tuples by uint keys
 
-### `bitset.bxor_uint_keys(space_id, index_id, keys)`
-Bitwise XOR tuple fields by uint key
+### `bitset.bxor_uint_keys(space_id, index_id, field_no, keys)`
+Bitwise XOR tuples by uint keys
 
 ### `bitset.set_bit_in_tuple_uint_key(space_id, index_id, key, field_no, bit_index)`
 Sets bit in tuple field
+
+### `bitset.bor_uint_iter(space_id, index_id, key, field_no, iterator)`
+Bitwise OR tuples with iterator by uint key
+
+### `bitset.band_uint_iter(space_id, index_id, key, field_no, iterator)`
+Bitwise AND tuples with iterator by uint key
+
+### `bitset.bxor_uint_iter(space_id, index_id, key, field_no, iterator)`
+Bitwise XOR tuples with iterator by uint key
 
 ### `bitset:bor_in_place(bitset)`
 In-place bitwise OR bitset with another

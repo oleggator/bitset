@@ -76,7 +76,7 @@ int lnew_from_string(lua_State *L) {
 
 
 bitset_t *new_from_tuple(lua_State *L, box_tuple_t *tuple, uint64_t field_no) {
-    const char *src_msgpack = box_tuple_field(tuple, field_no - 1);
+    const char *src_msgpack = box_tuple_field(tuple, field_no);
     if (src_msgpack == nullptr) {
         return nullptr;
     }
@@ -107,7 +107,7 @@ int lnew_from_tuple(lua_State *L) {
     uint64_t field_no = luaL_checkuint64(L, 2);
 
     box_tuple_ref(tuple);
-    new_from_tuple(L, tuple, field_no);
+    new_from_tuple(L, tuple, field_no - 1);
     box_tuple_unref(tuple);
 
     return 1;
@@ -129,7 +129,7 @@ int lbitwise_in_place(lua_State *L) {
 
 template<Op op>
 int bitwise_tuple_in_place(bitset_t *dst_bitset, box_tuple_t *src_tuple, uint64_t field_no) {
-    const auto *src = (const uint8_t *) box_tuple_field(src_tuple, field_no - 1);
+    const auto *src = (const uint8_t *) box_tuple_field(src_tuple, field_no);
     if (src == nullptr) {
         return 1;
     }
@@ -148,7 +148,7 @@ int lbitwise_tuple_in_place(lua_State *L) {
     uint64_t field_no = luaL_checkuint64(L, 3);
 
     box_tuple_ref(tuple);
-    int err = bitwise_tuple_in_place<op>(bitset, tuple, field_no);
+    int err = bitwise_tuple_in_place<op>(bitset, tuple, field_no - 1);
     box_tuple_unref(tuple);
 
     if (err != 0) {
@@ -201,7 +201,7 @@ int lbitwise_uint_keys(lua_State *L) {
     }
 
     box_tuple_ref(tuple);
-    bitset_t *bitset = new_from_tuple(L, tuple, field_no); // pushes bitset to lua stack
+    bitset_t *bitset = new_from_tuple(L, tuple, field_no - 1); // pushes bitset to lua stack
     box_tuple_unref(tuple);
 
     for (size_t i = 2; i <= keys_table_len; ++i) {
@@ -221,7 +221,67 @@ int lbitwise_uint_keys(lua_State *L) {
         }
 
         box_tuple_ref(tuple);
-        bitwise_tuple_in_place<op>(bitset, tuple, field_no);
+        bitwise_tuple_in_place<op>(bitset, tuple, field_no - 1);
+        box_tuple_unref(tuple);
+    }
+
+    return 1;
+}
+
+
+template<Op op>
+int lbitwise_uint_iter(lua_State *L) {
+    const int space_id_index = 1;
+    const int index_id_index = 2;
+    const int key_index = 3;
+    const int field_no_index = 4;
+    const int iterator_type_index = 5;
+
+    const uint64_t space_id = luaL_checkuint64(L, space_id_index);
+    const uint64_t index_id = luaL_checkuint64(L, index_id_index);
+    const uint64_t key = luaL_checkuint64(L, key_index);
+    const uint64_t field_no = luaL_checkuint64(L, field_no_index);
+    const uint64_t iterator_type = luaL_checkuint64(L, iterator_type_index);
+
+    const int key_msgpack_len = 10;  // max uint64 msgpack size + array header
+    char key_msgpack[key_msgpack_len];
+    char *key_part = mp_encode_array(key_msgpack, 1);
+    mp_encode_uint(key_part, key);
+
+    box_iterator_t *iter = box_index_iterator(space_id, index_id, iterator_type,
+                                              key_msgpack, key_msgpack + key_msgpack_len);
+    if (iter == nullptr) {
+        box_iterator_free(iter);
+        return luaT_error(L);
+    }
+
+    box_tuple_t *tuple;
+    int err = box_iterator_next(iter, &tuple);
+    if (err != 0) {
+        box_iterator_free(iter);
+        return luaT_error(L);
+    }
+    if (tuple == nullptr) {
+        box_iterator_free(iter);
+        return luaL_error(L, "Tuple with key %" PRIu64 " not found", key);
+    }
+
+    box_tuple_ref(tuple);
+    bitset_t *bitset = new_from_tuple(L, tuple, field_no - 1); // pushes bitset to lua stack
+    box_tuple_unref(tuple);
+
+    while (true) {
+        err = box_iterator_next(iter, &tuple);
+        if (err != 0) {
+            box_iterator_free(iter);
+            return luaT_error(L);
+        }
+        if (tuple == nullptr) {
+            break;
+        }
+
+        box_tuple_ref(tuple);
+        bitwise_tuple_in_place<op>(bitset, tuple, field_no - 1);
         box_tuple_unref(tuple);
     }
 

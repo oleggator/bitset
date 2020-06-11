@@ -35,6 +35,9 @@ int lbitwise_tuple_in_place(lua_State *L);
 template<Op>
 int lbitwise_uint_keys(lua_State *L);
 
+template<Op op>
+int lbitwise_uint_iter(lua_State *L);
+
 
 int lto_tuple(lua_State *L);
 
@@ -73,6 +76,10 @@ static const struct luaL_Reg bitset_f[] = {
     {"bor_uint_keys",             lbitwise_uint_keys<bit_or>},
     {"band_uint_keys",            lbitwise_uint_keys<bit_and>},
     {"bxor_uint_keys",            lbitwise_uint_keys<bit_xor>},
+
+    {"bor_uint_iter",             lbitwise_uint_iter<bit_or>},
+    {"band_uint_iter",            lbitwise_uint_iter<bit_and>},
+    {"bxor_uint_iter",            lbitwise_uint_iter<bit_xor>},
 
     {"set_bit_in_tuple_uint_key", lset_bit_in_tuple_uint_key},
 
