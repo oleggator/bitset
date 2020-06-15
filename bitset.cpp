@@ -5,6 +5,9 @@
 
 #include "bitset.h"
 
+#define popcount __builtin_popcount
+
+
 int luaopen_bitset(lua_State *L) {
     luaL_newmetatable(L, libname);
 
@@ -441,7 +444,7 @@ int lreset(lua_State *L) {
 uint64_t count(const uint8_t *bs, uint64_t len) {
     uint64_t counter = 0;
     for (uint64_t i = 0; i < len; ++i) {
-        counter += __builtin_popcount(bs[i]);
+        counter += popcount(bs[i]);
     }
     return counter;
 }

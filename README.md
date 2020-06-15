@@ -6,6 +6,7 @@
 - make
 - cmake >= 2.8
 - c++11 compiler
+- SSE4, AVX (>= Sandy Bridge or >= Bulldozer)
 
 ## API
 ### `bitset.new(byte_count)`

@@ -1,11 +1,20 @@
 cmake_minimum_required(VERSION 2.8)
 project(bitset CXX)
 
+if (NOT USE_SIMD AND CMAKE_BUILD_TYPE EQUAL "Release")
+    set(USE_SIMD TRUE)
+endif ()
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined suppress -flat_namespace")
 endif ()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -mavx -ftree-vectorize")
+set(CMAKE_MACOSX_RPATH 1)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -fPIC")
+
+if (USE_SIMD)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -ftree-vectorize -mpopcnt")
+endif ()
 
 include_directories(/usr/local/include)
 link_directories(/usr/local/lib)

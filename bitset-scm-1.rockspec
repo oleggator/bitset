@@ -23,6 +23,7 @@ build = {
 
     variables = {
         version = 'scm-1',
+        CMAKE_BUILD_TYPE = 'Release',
         TARANTOOL_DIR = '$(TARANTOOL_DIR)',
         TARANTOOL_INSTALL_LIBDIR = '$(LIBDIR)',
         TARANTOOL_INSTALL_LUADIR = '$(LUADIR)',
