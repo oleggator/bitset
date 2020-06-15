@@ -2,9 +2,13 @@ name: Test bitset
 on: [push]
 jobs:
   test:
+    strategy:
+      matrix:
+        docker_image:
+          - 'tarantool/tarantool:2.x-centos7'
+          - 'tarantool/tarantool:1.x-centos7'
     runs-on: ubuntu-latest
-    container:
-      image:  tarantool/tarantool:2.x-centos7
+    container: ${{ matrix.docker_image }}
     steps:
       - run: yum install -y git cmake make gcc gcc-c++
       - uses: actions/checkout@v1
