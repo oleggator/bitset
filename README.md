@@ -1,3 +1,5 @@
+### Moved to [github.com/tarantool/bitmap](https://github.com/tarantool/bitmap)
+
 # BitSet for Tarantool
 ![Test bitset](https://github.com/oleggator/bitset/workflows/Test%20bitset/badge.svg)
 
